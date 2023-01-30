@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'rbconfig'
+ENV['BY_SOCKET'] ||= File.join(Dir.pwd, '.by_socket')
+by_server = File.join(__dir__, 'by-server')
+ruby = File.join(RbConfig::CONFIG['bindir'], RbConfig::CONFIG['RUBY_INSTALL_NAME'])
+
+begin
+  system(ruby, by_server, *ARGV, exception: true)
+  system(ENV["SHELL"] || '/bin/sh')
+ensure
+  system(ruby, by_server, 'stop', exception: true)
+end

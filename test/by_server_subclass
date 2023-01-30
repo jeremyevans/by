@@ -1,0 +1,9 @@
+require_relative '../lib/by/server'
+
+By::Server.with_argument_handler do |args|
+  if args[0] == '-I'
+    args.shift
+    $LOAD_PATH.unshift(args.shift)
+  end
+  super(args)
+end.new.run

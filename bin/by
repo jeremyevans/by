@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'socket'
+
+by_server_path = ENV['BY_SOCKET'] || File.join(ENV["HOME"], '.by_socket')
+s = UNIXSocket.new(by_server_path)
+pid = s.readline("\0", chomp: true).to_i
+
+unless pid > 1
+  $stderr.puts "Invalid by_server worker pid"
+  exit(1)
+end
+
+s.send_io($stdin)
+s.send_io($stdout)
+s.send_io($stderr)
+
+s.write(Dir.pwd)
+s.write("\0")
+
+ENV.each do |k, v|
+  s.write(k)
+  s.write("=")
+  s.write(v)
+  s.write("\0")
+end
+s.write("\0")
+
+ARGV.each do |arg|
+  s.write(arg)
+  s.write("\0")
+end
+
+s.shutdown(Socket::SHUT_WR)
+exit_status = s.read
+s.close
+exit(exit_status == '0')

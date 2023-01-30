@@ -1,0 +1,2 @@
+ENV['COVERAGE'] = 'subprocess' if /simplecov_helper/ =~ ENV['RUBYOPT']
+load(File.join(Dir.pwd, 'bin/by-session'))

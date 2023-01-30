@@ -1,0 +1,284 @@
+= by
+
+by is a library preloader for Ruby designed to speed up process startup.
+It uses a client/server approach, where the server loads the libraries and
+listens on a UNIX socket, and the client connects to that socket to run
+a process.  For each client connection, the server forks a worker process,
+which uses the current directory, stdin, stdout, stderr, and environment
+of the client process.  The worker process then processes the arguments
+provided by the client. The client process waits until the worker process
+returns an exit code and closes the socket, and uses exit code 0 (normal
+exit) if the worker process indicates success, or exit code 1 (error)
+if the worker process indicates an error.
+
+== Installation
+
+  gem install by
+
+== Source Code
+
+Source code is available on GitHub at https://github.com/jeremyevans/by
+
+== Usage
+
+To use +by+, you first start <tt>by-server</tt>, passing in libraries you would
+like to preload.
+
+  $ by-server sequel roda capybara
+
+Then you can run ruby with the libraries preloaded using +by+:
+
+  $ by -e 'p [Sequel, Roda, Capybara]'
+  [Sequel, Roda, Capybara]
+
+The advantage of using +by+ is that the libraries are already loaded,
+so Ruby doesn't have to find the libraries and parse the files in each
+library on process startup.  Here's a performance comparison:
+
+  $ /usr/bin/time ruby -e 'require "sequel"; require "roda"; require "capybara"'
+          1.67 real         0.93 user         0.66 sys
+
+  $ /usr/bin/time   by -e 'require "sequel"; require "roda"; require "capybara"'
+          0.37 real         0.20 user         0.15 sys
+
+The more libraries your program uses that you can preload in the server
+program, the greater the speedup this offers.
+
+== Speeding Things Up Even More By Avoiding Rubygems
+
+Loading Rubygems is by far the slowest thing that Ruby does during
+process initialization:
+
+  $ /usr/bin/time ruby -e ''
+          0.25 real         0.11 user         0.14 sys
+
+  $ /usr/bin/time ruby --disable-gems -e ''
+          0.03 real         0.02 user         0.01 sys
+
+You can speedup +by+ by making it not require rubygems, since it only
+needs the +socket+ standard library. The only issue with that is that
++by+ is distributed as a gem.  There are a few workarounds.
+
+1. Create a shell alias.  How you create the alias will depend on
+   the shell you are using, but here's some Ruby code that will
+   output an alias command that will work for most shells:
+
+     require 'rbconfig'
+     by = Gem.activate_bin_path("by", "by")
+     ruby = File.join(RbConfig::CONFIG['bindir'], RbConfig::CONFIG['RUBY_INSTALL_NAME'])
+     puts "alias by='#{ruby} --disable-gems #{by}'"
+
+   Note that one issue with using a shell alias is that it only
+   works when loaded and used by the shell, it won't work if
+   executed by another program.
+
+2. Copy the +by+ program and modify the shebang line to use the
+   path to your +ruby+ binary and <tt>--disable-gems</tt>.  You can
+   get the path to the +by+ program with the following Ruby code.
+
+     puts Gem.activate_bin_path("by", "by")
+
+   You would copy that file to somewhere in your <tt>$PATH</tt>
+   before where the rubygems wrapper is installed, and then modify
+   the shebang.
+
+3. Add your own shell wrapper program that calls +by+. Here's some
+   example Ruby code that may work, though whether it does depends
+   on your shell.
+
+     require 'rbconfig'
+     by = Gem.activate_bin_path("by", "by")
+     ruby = File.join(RbConfig::CONFIG['bindir'], RbConfig::CONFIG['RUBY_INSTALL_NAME'])
+     File.binwrite("by", "#!/bin/sh\nexec #{ruby} --disable-gems #{by} \"$@\"\n")
+     File.chmod(0755, "by")
+
+With each of these approaches, you can get much faster program
+execution:
+
+  $ /usr/bin/time ./by -e 'require "sequel"; require "roda"; require "capybara"'
+          0.08 real         0.05 user         0.03 sys
+
+As you can see, by avoiding Rubygems, using +by+ to require the
+three libraries executes three times faster than Ruby itself starts
+if you are using Rubygems.
+
+With each of these approaches, you need to update the alias/wrapper
+any time you update the +by+ gem when the +by+ program itself has
+changed.  However, the +by+ program itself is quite small and simple
+and unlikely to change.
+
+== Argument Handling
+
+<tt>by-server</tt> treats all arguments provided on the command line as
+arguments to <tt>Kernel#require</tt>.
+
++by+ passes all arguments to the worker process over the UNIX socket.
+
+The worker process handles arguments passed by the client in the following
+way:
+
+* If first argument is +m+ or matches <tt>/\.rb:\d+\z</tt>, uses the +m+
+  gem to run a single minitest test by line number, waiting until after
+  the test is run so that it can return the correct exit code.
+* If first argument is +irb+, starts an IRB shell with remaining arguments
+  in ARGV.
+* If first argument is <tt>-e</tt>, evaluates second argument as Ruby code,
+  with remaining arguments in ARGV.
+* If no arguments are given, evaluates Ruby code provided on stdin.
+* Otherwise, treats first argument as a file name, expands the file path,
+  and then requires that.  If Minitest is loaded and set to autorun, waits
+  until after Minitest runs tests, so it can return the correct exit code.
+  If Minitest is not loaded or not set to autorun, exits after the file
+  is required.
+
+=== Restarting the Server
+
+If <tt>by-server</tt> is already running, running <tt>by-server</tt> will
+shutdown the existing server and start a new server with the arguments it
+is given.
+
+=== Stopping the Server
+
+Running <tt>by-server stop</tt> will stop an existing server without starting
+a new server.  If no server is running, <tt>by-server stop</tt> will exit
+without doing anything.
+
+You can also send a +TERM+ signal to the <tt>by-server</tt> process to shut
+the server down gracefully.  Be aware that by default, <tt>by-server</tt>
+daemonizes, so the pid of the started <tt>by-server</tt> will not be the
+pid <tt>by-server</tt> uses to run.  For that reason, it is recommended to
+use <tt>by-server stop</tt> to stop the server.
+
+=== Running Multiple Servers
+
+==== Manually
+
+You can run multiple +by-server+ processes concurrently by making sure
+they each use a separate UNIX socket, which you can configure with the
++BY_SOCKET+ environment variable:
+
+  $ BY_SOCKET=~/.by_sequel_socket by-server sequel
+  $ BY_SOCKET=~/.by_roda_socket by-server roda
+  $ BY_SOCKET=~/.by_sequel_socket by -e 'p [defined?(Sequel), defined?(Roda)]'
+  ["constant", nil]
+  $ BY_SOCKET=~/.by_roda_socket by -e 'p [defined?(Sequel), defined?(Roda)]'
+  [nil, "constant"]
+
+==== Using <tt>by-session</tt>
+
+In many cases, it can be helpful to have a separate server process for
+each application directory. <tt>by-session</tt> exists to make this easier.
+<tt>by-session</tt> will call <tt>by-server</tt> with the arguments it is
+given, using a socket in the current directory by default, and then open a
+new shell.  When the shell exits, <tt>by-session</tt> will stop the
+<tt>by-server</tt> it spawned.
+
+If the directory in which you are running <tt>by-session</tt> has a +Gemfile+,
+you could add a file named <tt>.by-session-setup.rb</tt> in your home directory,
+which contains:
+
+  require 'bundler/setup'
+  Bundler.require(:default)
+
+When you to startup a <tt>by-session</tt> shell for the directory using the
++Gemfile+, you can use:
+
+  $ by-session ~/.by-session-setup
+
+This will load all gems in the +Gemfile+ into the <tt>by-server</tt> process.
+If you are doing this, you must be careful to only run this in a directory
+that you trust.
+
+If you don't want to specify the <tt>~/.by-session-setup</tt> argument every
+time you start <tt>by-session</tt>, you can use the +BY_SERVER_AUTO_REQUIRE+
+environment variable.
+
+=== Environment Variables
+
++BY_SOCKET+ :: The path to the UNIX socket to listen on (<tt>by-server</tt>)
+               or connect to (+by+). 
++DEBUG+ :: If set to +log+, logs <tt>$LOADED_FEATURES</tt> to stdout
+           after requiring libraries (<tt>by-server</tt>) or before worker
+           process shutdown (+by+).
+
+==== <tt>by-server</tt>-Specific Environment Variables
+
++BY_SERVER_AUTO_REQUIRE+ :: Whitespace separated list of libraries for
+                            <tt>by-server</tt> to require, before it requires
+                            command line arguments.
++BY_SERVER_NO_DAEMON+ :: Do not daemonize if set.
++BY_SERVER_DAEMON_NO_CHDIR+ :: Do not change directory to <tt>/</tt>
+                               when daemonizing if set.
++BY_SERVER_DAEMON_NO_REDIR_STDIO+ :: Do not redirect stdio to
+                                     <tt>/dev/null</tt> when daemonizing
+                                     if set.
+
+== <tt>by-server</tt> Signals
+
++QUIT+ :: Close the socket (this is what <tt>by-server stop</tt> uses).
++TERM+ :: Delete the socket path and then close the socket.
+
+== Internals
+
+There are two classes, <tt>By::Server</tt> and <tt>By::Worker</tt>.
+<tt>By::Server</tt> listens on the UNIX socket, forking worker
+processes for each connection. <tt>By::Worker</tt> is run in each
+worker process handling receiving data from the +by+ command line
+program.
+
+The +by+ command line program is self-contained, there is no
+Ruby class for the behavior, to make sure startup is as fast as
+possible. <tt>by-session</tt> is also self-contained.
+
+== Customization
+
+For custom handling of arguments, you can require <tt>by/server</tt>
+and use the <tt>By::Server.with_argument_handler</tt> method. For example,
+if you wanted to add support for an initial <tt>-I</tt> option to modify
+the load path, and then use the standard argument handling:
+
+  require 'by/server'
+
+  By::Server.with_argument_handler do |args|
+    if args[0] == '-I'
+      args.shift
+      $LOAD_PATH.unshift(args.shift)
+    end
+    super(args)
+  end.new.run
+
+Note that if you do this, you are responsible for making sure
+to correctly communicate with the client socket.  Otherwise, it's
+possible the client socket may hang waiting on a response. Please
+review the default argument handling in <tt>lib/by/worker.rb</tt>
+before writing your own argument handler.
+
+== Security
+
+As with any program that forks without executing, the memory layout
+is shared by the client and the server program, which can lead to
+Blind Return Oriented Programming (BROP) attacks.  You should avoid
+using +by+ to run a program that deals with any untrusted input.
++by+ makes a deliberate choice to trade security to make process
+startup as fast as possible.
+
+The server socket is set to mode 0600, so it is only readable and
+writable by the same user.
+
+== Name
+
+The name +by+ was chosen because it is +ruby+ with the +ru+ preloaded.
+
+== Similar Projects
+
+* Spring: https://github.com/rails/spring
+* Spin: https://github.com/jstorimer/spin
+* Spinoff: https://github.com/bernd/spinoff
+
+== License
+
+MIT
+
+== Author
+
+Jeremy Evans <code@jeremyevans.net>
