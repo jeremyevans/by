@@ -18,7 +18,7 @@ require 'open3'
 require 'socket'
 require 'rbconfig'
 
-RUBY = File.join(RbConfig::CONFIG['bindir'], RbConfig::CONFIG['RUBY_INSTALL_NAME'])
+RUBY = RbConfig.ruby
 BY_TEST_FILE = File.expand_path(File.join(__dir__, 'lib', 'lib.rb'))
 BY_TEST_FILE2 = File.expand_path(File.join(__dir__, 'lib', 'lib2.rb'))
 BY_TEST_ARGV_FILE = File.expand_path(File.join(__dir__, 'lib', 'argv_example.rb'))

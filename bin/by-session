@@ -4,7 +4,7 @@
 require 'rbconfig'
 ENV['BY_SOCKET'] ||= File.join(Dir.pwd, '.by_socket')
 by_server = File.join(__dir__, 'by-server')
-ruby = File.join(RbConfig::CONFIG['bindir'], RbConfig::CONFIG['RUBY_INSTALL_NAME'])
+ruby = RbConfig.ruby
 
 begin
   system(ruby, by_server, *ARGV, exception: true)
