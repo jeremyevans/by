@@ -1,12 +1,12 @@
 # frozen_string_literal: true
-    
+
 module By
   class Worker
     # Whether the worker process should signal a normal exit to the client.
     # The default is nil, which signals a normal exit when the worker
     # process exits normally.  This can be set to false to signal an
     # abnormal exit, such as to indicate test failures.
-    attr_writer :normal_exit 
+    attr_writer :normal_exit
 
     # Create the worker.  Arguments
     # socket :: The Unix socket to use to communicate with the client.
@@ -161,4 +161,3 @@ module By
     end
   end
 end
-
