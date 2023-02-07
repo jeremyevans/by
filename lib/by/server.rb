@@ -89,7 +89,7 @@ module By
     end
 
     # Handle an existing server socket.  This attempts to connect to the socket and
-    # then shutdown the server. If successful, it removes the socket.  If unnecessful,
+    # then shutdown the server. If successful, it removes the socket.  If unsuccessful,
     # it will print an error.
     def handle_existing_server
       if File.socket?(@socket_path)
