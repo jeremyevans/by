@@ -65,8 +65,7 @@ needs the +socket+ standard library. The only issue with that is that
 
      require 'rbconfig'
      by = Gem.activate_bin_path("by", "by")
-     ruby = File.join(RbConfig::CONFIG['bindir'], RbConfig::CONFIG['RUBY_INSTALL_NAME'])
-     puts "alias by='#{ruby} --disable-gems #{by}'"
+     puts "alias by='#{RbConfig.ruby} --disable-gems #{by}'"
 
    Note that one issue with using a shell alias is that it only
    works when loaded and used by the shell, it won't work if
@@ -88,8 +87,7 @@ needs the +socket+ standard library. The only issue with that is that
 
      require 'rbconfig'
      by = Gem.activate_bin_path("by", "by")
-     ruby = File.join(RbConfig::CONFIG['bindir'], RbConfig::CONFIG['RUBY_INSTALL_NAME'])
-     File.binwrite("by", "#!/bin/sh\nexec #{ruby} --disable-gems #{by} \"$@\"\n")
+     File.binwrite("by", "#!/bin/sh\nexec #{RbConfig.ruby} --disable-gems #{by} \"$@\"\n")
      File.chmod(0755, "by")
 
 With each of these approaches, you can get much faster program
