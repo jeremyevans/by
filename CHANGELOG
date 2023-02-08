@@ -1,5 +1,7 @@
 === master
 
+* Remove debugging code when running a single file with minitest autorun (jeremyevans)
+
 * Use RbConfig.ruby to get the ruby binary name (eregon) (#1)
 
 === 1.0.0 (2023-02-07)

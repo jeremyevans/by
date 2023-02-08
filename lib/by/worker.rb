@@ -146,7 +146,7 @@ module By
         if defined?(Minitest) && Minitest.class_variable_get(:@@installed_at_exit)
           Minitest.singleton_class.prepend(Module.new do
             define_method(:run) do |argv|
-              super(argv).tap{|exit_code| p worker.normal_exit = exit_code == true}
+              super(argv).tap{|exit_code| worker.normal_exit = exit_code == true}
             end
           end)
           Minitest.after_run(&cleanup)
