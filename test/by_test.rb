@@ -68,8 +68,22 @@ describe 'by/by_server' do
   end
 
   after do
-    by_server_stop if @by_server && File.socket?(BY_SOCKET)
-    File.delete(BY_SOCKET) if File.socket?(BY_SOCKET)
+    if @by_server && File.socket?(BY_SOCKET)
+      by_server_stop
+      i = 0
+      while File.socket?(BY_SOCKET)
+        i += 1
+        sleep(0.1)
+        by_server_stop
+        if i > 10
+          $stderr.puts "leaked by-server"
+          File.delete(BY_SOCKET)
+          break
+        end
+      end
+    elsif File.socket?(BY_SOCKET)
+      File.delete(BY_SOCKET)
+    end
   end
 
   it "should have server preload libraries when daemonizing" do
@@ -329,7 +343,11 @@ describe 'by/by_server' do
       end
       sleep 0.3
     ensure
-      by_server_stop
+      if defined?(SimpleCov)
+        system(RUBY, BY_SERVER, 'stop', err: File::NULL)
+      else
+        by_server_stop
+      end
       t.join
       t2.join
     end

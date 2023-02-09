@@ -1,5 +1,7 @@
 === master
 
+* Make by-server stop more reliable by using SIGKILL if server does not stop with SIGQUIT (jeremyevans)
+
 * Remove debugging code when running a single file with minitest autorun (jeremyevans)
 
 * Use RbConfig.ruby to get the ruby binary name (eregon) (#1)

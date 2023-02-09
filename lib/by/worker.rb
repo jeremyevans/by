@@ -48,7 +48,30 @@ module By
 
     # Stop the server process by sending it the SIGQUIT signal, then exit.
     def stop_server
-      Process.kill(:QUIT, Process.ppid)
+      i = 0
+      while Process.ppid != 1 && Process.kill(0, Process.ppid)
+        if i < 4
+          Process.kill(:QUIT, Process.ppid)
+        end
+        sleep 0.1
+
+        # :nocov:
+        if i == 5
+          # This is only reached if the QUIT signal does not
+          # cause the process to exit.
+          Process.kill(:KILL, Process.ppid)
+        end
+        if i > 8
+          # This is only reached if the process has still not
+          # stopped even after the KILL signal was sent.
+          $stderr.puts "ERROR: cannot stop by-server"
+          @normal_exit = false
+          break
+        end
+        # :nocov:
+
+        i += 1
+      end
       cleanup_proc.call
       exit
     end
