@@ -55,7 +55,6 @@ module By
         end
         sleep 0.1
 
-        # :nocov:
         if i == 5
           # This is only reached if the QUIT signal does not
           # cause the process to exit.
@@ -68,7 +67,6 @@ module By
           @normal_exit = false
           break
         end
-        # :nocov:
 
         i += 1
       end

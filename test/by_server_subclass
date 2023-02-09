@@ -1,9 +1,17 @@
 require_relative '../lib/by/server'
 
-By::Server.with_argument_handler do |args|
+klass = By::Server.with_argument_handler do |args|
   if args[0] == '-I'
     args.shift
     $LOAD_PATH.unshift(args.shift)
   end
   super(args)
-end.new.run
+end
+
+if ENV['BY_SERVER_COVERAGE_TEST_NO_QUIT']
+  klass.define_method(:setup_signals) do
+    Signal.trap(:QUIT){}
+  end
+end
+
+klass.new.run

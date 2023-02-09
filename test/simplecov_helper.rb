@@ -24,6 +24,13 @@ SimpleCov.instance_exec do
     if ENV['BY_SERVER_COVERAGE_TEST_NO_DAEMON']
       def Process.daemon(*a) end
     end
+    if ENV['BY_SERVER_COVERAGE_TEST_NO_KILL']
+      Process.singleton_class.prepend(Module.new do
+        def kill(sig, *)
+          super unless sig == :KILL
+        end
+      end)
+    end
     if ENV['BY_SERVER_COVERAGE_TEST_M_EXIT']
       require 'm'
       M.singleton_class.include(Module.new do

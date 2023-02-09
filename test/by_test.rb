@@ -3,7 +3,6 @@ if ENV.delete('COVERAGE')
   BY_ENV = {
     'COVERAGE'=>'subprocess',
     'RUBYOPT'=>"#{ENV['RUBYOPT']} -r ./test/simplecov_helper",
-    'BY_SERVER_NO_DAEMON_NO_CHDIR'=>'1',
   }.freeze
   BY_SERVER_ENV = BY_ENV.merge('BY_SERVER_NO_DAEMON'=>'1').freeze
   BY_ARGS = [].freeze
@@ -86,15 +85,14 @@ describe 'by/by_server' do
     end
   end
 
-  it "should have server preload libraries when daemonizing" do
+  it "should have server preload libraries when not daemonizing" do
     by_server_env(BY_SERVER_ENV.merge('BY_SERVER_NO_DAEMON'=>'1'), BY_TEST_FILE)
     by('-e', 'print BY_TEST').must_equal ['1', '', 0]
     by(BY_TEST_FILE).must_equal ['', '', 0]
   end
 
-  it "should have server preload libraries when not daemonizing" do
+  it "should have server preload libraries when daemonizing" do
     env = BY_SERVER_ENV.merge(
-      'BY_SERVER_NO_DAEMON_NO_CHDIR'=>'1',
       'BY_SERVER_DAEMON_NO_REDIR_STDIO'=>'1',
       'BY_SERVER_COVERAGE_TEST_NO_DAEMON'=>'1'
     )
@@ -250,6 +248,20 @@ describe 'by/by_server' do
     @by_server = Process.spawn(BY_SERVER_ENV, RUBY, server, BY_TEST_FILE)
     ensure_server_up
     by('-I', 'test/lib', '-e', 'print BY_TEST; Object.send(:remove_const, :BY_TEST); require "lib2"; print BY_TEST;').must_equal ['12', '', 0]
+  end
+
+  it "should have By::Server.with_argument_handling work" do
+    server = File.expand_path(File.join(__dir__, 'by_server_subclass'))
+    @by_server = Process.spawn(BY_SERVER_ENV.merge('BY_SERVER_COVERAGE_TEST_NO_KILL'=>'1', 'BY_SERVER_COVERAGE_TEST_NO_QUIT'=>'1'), RUBY, server, BY_TEST_FILE)
+    ensure_server_up
+    by('-I', 'test/lib', '-e', 'print BY_TEST; Object.send(:remove_const, :BY_TEST); require "lib2"; print BY_TEST;').must_equal ['12', '', 0]
+    if defined?(SimpleCov)
+      o, e = by_server_capture(BY_SERVER_ENV, RUBY, server, 'stop')
+      o.must_equal ''
+      e.must_include 'ERROR: cannot stop by-server'
+      Process.kill(:KILL, @by_server)
+      File.delete(BY_SOCKET) rescue nil
+    end
   end
 
   it "should have worker handle error when requiring file" do
