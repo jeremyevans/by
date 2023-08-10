@@ -3,3 +3,6 @@ source 'https://rubygems.org'
 gem "rake"
 gem "minitest-global_expectations"
 gem "m"
+
+# Limit minitest version because m does not yet work with minitest 5.19+
+gem "minitest", "<5.19"
