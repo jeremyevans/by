@@ -136,6 +136,22 @@ module By
           super(exit_code)
         end
         M.run(args)
+      when 'rspec'
+        args.shift
+        ARGV.replace(args)
+        require 'rspec/core'
+        RSpec.configure do |c|
+          # Fix start_time to be accurate if rspec was required by by-server
+          c.instance_variable_set(:@start_time, Time.now)
+        end
+        # invoke exits non-zero if there are failures
+        RSpec::Core::Runner.define_singleton_method(:exit) do |exit_code|
+          worker.normal_exit = exit_code == 0
+          cleanup.call
+          super(exit_code)
+        end
+        RSpec::Core::Runner.invoke
+        at_exit(&cleanup)
       when 'irb'
         at_exit(&cleanup)
         args.shift

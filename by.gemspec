@@ -35,4 +35,6 @@ END
   s.required_ruby_version = ">= 2.6"
   s.add_development_dependency "minitest-global_expectations"
   s.add_development_dependency 'm'
+  s.add_development_dependency 'rspec-core'
+  s.add_development_dependency 'rspec-expectations'
 end

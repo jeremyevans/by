@@ -203,6 +203,19 @@ describe 'by/by_server' do
     st.exitstatus.must_equal 1
   end
 
+  it "should have worker handle rspec first argument" do
+    by_server_env(BY_SERVER_ENV, 'rspec/core')
+    o, e, st = by('rspec', 'test/lib/rspec_example.rb')
+    o.must_include '2 examples, 0 failures'
+    e.must_equal ""
+    st.exitstatus.must_equal 0
+
+    o, e, st = by_env(BY_SERVER_ENV.merge('RSPEC_FAIL'=>'1'), 'rspec', 'test/lib/rspec_example.rb')
+    o.must_include '2 examples, 1 failure'
+    e.must_equal ""
+    st.exitstatus.must_equal 1
+  end
+
   it "should have worker handle irb first argument" do
     by_server_env(BY_SERVER_ENV, 'irb')
     o, e, st = by('irb', :stdin_data=>"p('a' + 'bc')")

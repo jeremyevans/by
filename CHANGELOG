@@ -1,3 +1,7 @@
+=== master
+
+* Support rspec as first argument to by, to run rspec with by (jeremyevans)
+
 === 1.0.1 (2023-02-09)
 
 * Make by-server stop more reliable by using SIGKILL if server does not stop with SIGQUIT (jeremyevans)
