@@ -1,4 +1,4 @@
-=== master
+=== 1.1.0 (2024-11-06)
 
 * Support rspec as first argument to by, to run rspec with by (jeremyevans)
 
