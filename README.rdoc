@@ -267,6 +267,11 @@ writable by the same user.
 
 The name +by+ was chosen because it is +ruby+ with the +ru+ preloaded.
 
+== Background
+
++by+ was created in order to {speed up the running of individual tests
+in my production applications}[https://code.jeremyevans.net/2023-02-14-speeding-up-tests-in-applications-using-sequel-and-roda.html].
+
 == Similar Projects
 
 * Spring: https://github.com/rails/spring
