@@ -5,3 +5,8 @@ gem "minitest-global_expectations"
 gem "m"
 gem "rspec-core"
 gem "rspec-expectations"
+
+if RUBY_VERSION < "2.7"
+  # Limit minitest version because m does not yet work with minitest 5.19+
+  gem "minitest", "<5.19"
+end
