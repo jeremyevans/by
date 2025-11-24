@@ -1,1 +1,1 @@
-load(File.join(Dir.pwd, 'bin/by'))
+load(File.join(__dir__, '..', 'bin/by'))
