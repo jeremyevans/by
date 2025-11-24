@@ -112,7 +112,7 @@ module By
           puts "Success!" if @debug
         end
         @socket = nil
-        File.delete(@socket_path)
+        remove_server_socket
       end
     end
 
@@ -152,6 +152,13 @@ module By
       !!@daemonize
     end
 
+    # Remove the server socket if it exists
+    def remove_server_socket
+      File.delete(@socket_path)
+    rescue Errno::ENOENT
+      # server socket already deleted, ignore
+    end
+
     # Trap SIGTERM and have it stop accepting clients.
     # Trap SIGTERM and have it remove the socket and stop accepting clients.
     def setup_signals
@@ -159,11 +166,7 @@ module By
         stop_accepting_clients!
       end
       @sigterm_default = Signal.trap(:TERM) do
-        begin
-          File.delete(@socket_path)
-        rescue Errno::ENOENT
-          # server socket already deleted, ignore
-        end
+        remove_server_socket
         stop_accepting_clients!
       end
     end
@@ -180,7 +183,7 @@ module By
     # stop_accepting_clients! has been called.
     def accept_client
       @socket.accept
-    rescue IOError, Errno::EBADF
+    rescue IOError, Errno::EBADF, ThreadError, TypeError
       # likely closed stream, return nil to exit accept_clients loop
       nil
     end
@@ -189,6 +192,9 @@ module By
     # loop to terminate.
     def stop_accepting_clients!
       @socket.close
+    rescue IOError
+      # likely closed stream, exit
+      exit 0
     end
 
     # Fork a worker process to handle the client connection.  Close the
